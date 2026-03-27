@@ -2,7 +2,7 @@
  * NexLib Core Logic - 120% Consistent & Premium
  */
 
-const API_URL = 'http://127.0.0.1:8011';
+const API_URL = 'http://127.0.0.1:8000';
 
 // --- SHARED UTILITIES ---
 
@@ -111,7 +111,12 @@ async function loadDashboard() {
         }
         const issues = await fetchApi('/issued');
         if (issues) renderActivityTable(issues.slice(0, 5));
+        
+        // --- NEW OPERATION: CATEGORY SYNC ---
+        const catStats = await fetchApi('/reports/categories');
+        if (catStats) renderCategoryAnalytics(catStats);
     } else {
+
         const history = await fetchApi('/my-issues');
         if (history) renderStudentPortal(history);
     }
@@ -172,7 +177,30 @@ function renderStudentPortal(history) {
     }
 }
 
+function renderCategoryAnalytics(cats) {
+    const container = document.getElementById('category-stats');
+    if (!container) return;
+    const total = cats.reduce((acc, c) => acc + c.count, 0);
+    container.innerHTML = `
+        <div class="glass" style="padding: 30px; border-radius: 20px;">
+            <h3 style="margin-bottom:20px;">Genre Distribution</h3>
+            ${cats.map(c => `
+                <div style="margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>${c.category}</span>
+                        <span style="font-weight:700">${Math.round((c.count/total)*100)}%</span>
+                    </div>
+                    <div style="height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">
+                        <div style="width:${(c.count/total)*100}%; height:100%; background:var(--primary); box-shadow:0 0 10px var(--primary)"></div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 // --- CATALOG ---
+
 
 async function loadCatalog(search = '') {
     const books = await fetchApi(`/books${search ? `?search=${encodeURIComponent(search)}` : ''}`);

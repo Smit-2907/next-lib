@@ -1,4 +1,12 @@
 import uvicorn
+import os
+import sys
+
+# Auto-add current folder to path to support direct script execution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.future import select
@@ -7,15 +15,17 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from datetime import date, timedelta
-from .database import engine, Base, get_db
-from .models import User, Book, IssuedBook
-from .schemas import (
+
+# Standard imports
+from database import engine, Base, get_db
+from models import User, Book, IssuedBook
+from schemas import (
     UserCreate, UserLogin, User as UserSchema, Token, 
     BookCreate, BookUpdate, Book as BookSchema, 
     IssueRequest, ReturnRequest, IssuedBook as IssuedBookSchema, 
     LibrarySummary
 )
-from .auth import (
+from auth import (
     get_password_hash, verify_password, create_access_token, 
     get_current_user, get_current_admin, ACCESS_TOKEN_EXPIRE_MINUTES
 )
@@ -159,8 +169,6 @@ async def issue_book(req: IssueRequest, current_user: User = Depends(get_current
 
 @app.post("/return")
 async def return_book(req: ReturnRequest, db: AsyncSession = Depends(get_db)):
-    # Admin or student (though usually student returns their own, or admin validates)
-    # We'll allow returning by issue_id for simplicity, assuming whoever has the ID can return.
     result = await db.execute(
         select(IssuedBook).options(selectinload(IssuedBook.book)).filter(IssuedBook.id == req.issue_id, IssuedBook.status == "issued")
     )
@@ -221,10 +229,17 @@ async def get_summary(db: AsyncSession = Depends(get_db)):
         "total_students": student_count
     }
 
+@app.get("/reports/categories", dependencies=[Depends(get_current_admin)])
+async def get_category_stats(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Book.category, func.count(Book.id)).group_by(Book.category))
+    stats = result.all()
+    return [{"category": s[0] or "General", "count": s[1]} for s in stats]
+
 @app.get("/users", response_model=List[UserSchema], dependencies=[Depends(get_current_admin)])
+
 async def list_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
     return result.scalars().all()
 
 if __name__ == "__main__":
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8011, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
