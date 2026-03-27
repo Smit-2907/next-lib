@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexLib | Unlock Library</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-container">
+    <div class="auth-card glass" style="max-width: 480px; padding: 60px;">
+        <div class="sidebar-brand" style="justify-content: center; font-size: 2rem; margin-bottom: 25px;">
+            <i class="fas fa-book-bookmark"></i>
+            <span>NexLib</span>
+        </div>
+        <h2 style="font-weight: 700; margin-bottom: 30px; text-align: center;">Welcome Back!</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label>Institutional Email</label>
+                <input type="email" class="form-control" id="login-email" required placeholder="name@example.com">
+            </div>
+            <div class="form-group">
+                <label>Access Code</label>
+                <input type="password" class="form-control" id="login-password" required placeholder="Your secure password">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">Authorize Entry <i class="fas fa-lock"></i></button>
+        </form>
+        <p class="mt-4 text-center" style="font-size: 1rem; color: var(--text-muted); margin-top: 1.5rem;">
+            New to our system? <a href="register.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">Apply for Access</a>
+        </p>
+    </div>
+    <div id="toast-container"></div>
+    <script src="app.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8011/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    sessionStorage.setItem('token', data.access_token);
+                    sessionStorage.setItem('role', data.role);
+                    showToast('Access Granted! Synchronizing profile...', 'success');
+                    setTimeout(() => window.location.href = data.role === 'admin' ? 'admin_dashboard.html' : 'student_dashboard.html', 1500);
+                } else {
+                    showToast(data.detail || 'Access Denied: Invalid Credentials', 'danger');
+                }
+            } catch (err) {
+                showToast('Library Core Offline: Connection Failed', 'danger');
+            }
+        });
+    </script>
+</body>
+</html>

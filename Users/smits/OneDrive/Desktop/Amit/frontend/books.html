@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexLib | Catalog Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-layout">
+    <nav class="sidebar glass" id="sidebar-container"></nav>
+    <main class="content">
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Archive Management</h1>
+                <p>Curate, update, and monitor the global library collection.</p>
+            </div>
+            <div class="user-profile" id="header-profile" style="display: flex; align-items: center; gap: 15px;"></div>
+        </header>
+
+        <!-- Management Controls -->
+        <section class="glass" style="padding: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 20px; align-items: center;">
+                <div class="search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-control" placeholder="Search archive..." oninput="debounce(this.value)">
+                </div>
+                <div style="display: flex; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 10px;">
+                    <button id="view-table" class="btn btn-glass active-view" style="padding: 10px 15px; border: none; background: var(--primary);" onclick="switchView('table')">
+                        <i class="fas fa-list"></i>
+                    </button>
+                    <button id="view-grid" class="btn btn-glass" style="padding: 10px 15px; border: none;" onclick="switchView('grid')">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                </div>
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <button class="btn btn-glass"><i class="fas fa-file-export"></i> Export CSV</button>
+                <button onclick="openBookModal()" class="btn btn-primary"><i class="fas fa-plus"></i> Add New Entry</button>
+            </div>
+        </section>
+
+        <section id="books-container">
+            <div class="glass table-card loading-pulse" style="height: 500px;"></div>
+        </section>
+    </main>
+
+    <!-- Modal for Add/Edit Book -->
+    <div id="book-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header" style="margin-bottom: 30px;">
+                <h2 id="modal-title">Archive Entry</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Register a new physical or digital asset.</p>
+            </div>
+            <form id="book-form">
+                <input type="hidden" id="book-id">
+                <div class="form-group"><label>Asset Title</label><input type="text" id="book-title" class="form-control" required placeholder="The Great Gatsby"></div>
+                <div class="form-group"><label>Primary Author</label><input type="text" id="book-author" class="form-control" required placeholder="F. Scott Fitzgerald"></div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group"><label>ISBN-13</label><input type="text" id="book-isbn" class="form-control" placeholder="978-..."></div>
+                    <div class="form-group"><label>Quantity</label><input type="number" id="book-qty" class="form-control" value="1" min="0"></div>
+                </div>
+                
+                <div class="form-group"><label>Genre / Category</label><input type="text" id="book-cat" class="form-control" placeholder="e.g. Science, Fiction"></div>
+                <div class="form-group"><label>Cover Image URL</label><input type="url" id="book-cover" class="form-control" placeholder="https://..."></div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
+                    <button type="button" class="btn btn-glass" onclick="document.getElementById('book-modal').style.display='none'">Discard</button>
+                    <button type="submit" class="btn btn-primary">Commit Changes <i class="fas fa-database"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="app.js"></script>
+    <script>
+        checkAuth('admin');
+        let currentView = 'table';
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('view-table').style.background = view === 'table' ? 'var(--primary)' : 'transparent';
+            document.getElementById('view-grid').style.background = view === 'grid' ? 'var(--primary)' : 'transparent';
+            loadCatalog();
+        }
+
+        function openBookModal(book = null) {
+            const modal = document.getElementById('book-modal');
+            document.getElementById('modal-title').innerText = book ? 'Modify Archive Entry' : 'New Archive Entry';
+            document.getElementById('book-id').value = book ? book.id : '';
+            document.getElementById('book-title').value = book ? book.title : '';
+            document.getElementById('book-author').value = book ? book.author : '';
+            document.getElementById('book-isbn').value = book ? (book.isbn || '') : '';
+            document.getElementById('book-qty').value = book ? book.quantity : 1;
+            document.getElementById('book-cat').value = book ? (book.category || '') : '';
+            document.getElementById('book-cover').value = book ? (book.cover_url || '') : '';
+            modal.style.display = 'flex';
+        }
+
+        document.getElementById('book-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('book-id').value;
+            const payload = { title: document.getElementById('book-title').value, author: document.getElementById('book-author').value, isbn: document.getElementById('book-isbn').value, quantity: parseInt(document.getElementById('book-qty').value), category: document.getElementById('book-cat').value, cover_url: document.getElementById('book-cover').value };
+            const method = id ? 'PUT' : 'POST';
+            const endpoint = id ? `/books/${id}` : '/books';
+            const res = await fetchApi(endpoint, method, payload);
+            if (res) { showToast('Collection sync successful!', 'success'); document.getElementById('book-modal').style.display='none'; loadCatalog(); }
+        });
+        
+        async function deleteBook(id) {
+            if (!confirm('Permanent Deletion: Are you sure?')) return;
+            const res = await fetchApi(`/books/${id}`, 'DELETE');
+            if (res) { showToast('Asset purged from library.', 'warning'); loadCatalog(); }
+        }
+    </script>
+</body>
+</html>

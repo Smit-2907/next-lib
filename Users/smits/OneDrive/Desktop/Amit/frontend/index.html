@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexLib | Your Future Library</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-container">
+    <div class="auth-card glass" style="max-width: 600px; text-align: center; padding: 60px;">
+        <div class="sidebar-brand" style="justify-content: center; font-size: 3rem; margin-bottom: 30px;">
+            <i class="fas fa-book-bookmark"></i>
+            <span>NexLib</span>
+        </div>
+        <h1 style="font-size: 2.5rem; margin-bottom: 20px;">The Next-Gen Library Experience</h1>
+        <p style="color: var(--text-muted); font-size: 1.2rem; margin-bottom: 40px;">
+            Unlock a world of premium knowledge with our high-performance Library Management System. 
+            Secure, fast, and beautifully designed.
+        </p>
+        <div style="display: flex; gap: 20px; justify-content: center;">
+            <a href="login.html" class="btn btn-primary" style="padding: 16px 40px;">Get Started <i class="fas fa-arrow-right"></i></a>
+            <a href="register.html" class="btn btn-glass" style="padding: 16px 40px;">Sign Up</a>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Check if already logged in and redirect
+        if (sessionStorage.getItem('token')) {
+            const role = sessionStorage.getItem('role');
+            window.location.href = role === 'admin' ? 'admin_dashboard.html' : 'student_dashboard.html';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexLib | Return Archive</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-layout">
+    <nav class="sidebar glass" id="sidebar-container"></nav>
+    <main class="content">
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Returns & Archive</h1>
+                <p>Process pending book returns and manage historical loan archives.</p>
+            </div>
+            <div class="user-profile" id="header-profile" style="display: flex; align-items: center; gap: 15px;"></div>
+        </header>
+
+        <section class="glass table-card" style="padding: 40px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h3>Active Book Loans</h3>
+                <div class="search-wrapper" style="max-width:300px;">
+                    <i class="fas fa-filter"></i>
+                    <input type="text" class="form-control" placeholder="Search loans...">
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject / Student</th>
+                        <th>Book Title</th>
+                        <th>Loan Status</th>
+                        <th>Protocol Due</th>
+                        <th>Management</th>
+                    </tr>
+                </thead>
+                <tbody id="active-loans-list">
+                    <!-- Data loaded via JS -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <!-- Fine Payment Confirmation Modal -->
+    <div id="fine-modal" class="modal-overlay">
+        <div class="modal-content glass" style="max-width: 450px; text-align: center;">
+            <div style="font-size: 3rem; color: var(--danger); margin-bottom: 20px;">
+                <i class="fas fa-clock-rotate-left"></i>
+            </div>
+            <h2>Protocol Violation: Overdue</h2>
+            <p style="color: var(--text-muted); margin: 20px 0;">This asset has exceeded the 7-day loan policy. Fine accumulated must be settled.</p>
+            <div style="background: rgba(244, 63, 94, 0.1); padding: 25px; border-radius: 15px; margin-bottom: 30px; border: 1px solid rgba(244,63,94,0.2);">
+                <span style="display: block; font-size: 0.9rem; color: var(--danger); font-weight: 600;">FINE BALANCE</span>
+                <span id="fine-amount" style="font-size: 2.5rem; font-weight: 800; color: #fff;">₹0</span>
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <button class="btn btn-glass" style="flex: 1;" onclick="document.getElementById('fine-modal').style.display='none'">Postpone</button>
+                <button class="btn btn-primary" style="flex: 2; background: var(--danger);" id="confirm-pay-btn">Settle & Archive <i class="fas fa-check"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="app.js"></script>
+    <script>
+        checkAuth();
+        let selectedIssueId = null;
+
+        async function initReturnPage() {
+            const role = sessionStorage.getItem('role');
+            const issues = await fetchApi(role === 'admin' ? '/issued' : '/my-issues');
+            if (!issues) return;
+            const active = issues.filter(i => i.status === 'issued');
+            
+            document.getElementById('active-loans-list').innerHTML = active.map(i => {
+                const isOverdue = new Date(i.due_date) < new Date();
+                const daysLate = isOverdue ? Math.ceil((new Date() - new Date(i.due_date)) / (1000*60*60*24)) : 0;
+                const fine = daysLate * 10;
+                
+                return `
+                    <tr>
+                        <td style="display:flex; align-items:center; gap:12px;">
+                            <div style="width:35px; height:35px; border-radius:50%; background:rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center; color:var(--text-muted);">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <span>${i.student_name || 'Self'}</span>
+                        </td>
+                        <td><strong>${i.book_title}</strong></td>
+                        <td>
+                            <span class="badge ${isOverdue ? 'badge-danger' : 'badge-warning'}">
+                                ${isOverdue ? `LATE (${daysLate}d)` : 'ON SCHEDULE'}
+                            </span>
+                        </td>
+                        <td>
+                            <span style="color:${isOverdue ? 'var(--danger)' : 'var(--text-main)'}">
+                                ${i.due_date}
+                            </span>
+                        </td>
+                        <td>
+                            <button onclick="handleReturn(${i.id}, ${fine})" class="btn btn-primary" style="padding: 10px 20px; font-size: 0.85rem;">
+                                ${fine > 0 ? 'Settle Return' : 'Archive Return'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="5" class="text-center" style="padding: 100px; color: var(--text-muted);">Archive is currently empty. All assets are safely stored.</td></tr>';
+        }
+
+        function handleReturn(id, fine) {
+            if (fine > 0) {
+                selectedIssueId = id;
+                document.getElementById('fine-amount').innerText = `₹${fine}`;
+                document.getElementById('fine-modal').style.display = 'flex';
+                document.getElementById('confirm-pay-btn').onclick = () => performReturn(id);
+            } else {
+                if(confirm('Archive this return protocol?')) performReturn(id);
+            }
+        }
+
+        async function performReturn(id) {
+            const res = await fetchApi('/return', 'POST', { issue_id: id });
+            if (res) {
+                showToast('Protocol Closed. Asset Restored.', 'success');
+                document.getElementById('fine-modal').style.display = 'none';
+                initReturnPage();
+            }
+        }
+
+        initReturnPage();
+    </script>
+</body>
+</html>

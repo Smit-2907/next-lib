@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexLib | Loan Protocol</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="app-layout">
+    <nav class="sidebar glass" id="sidebar-container"></nav>
+
+    <main class="content">
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Loan Authorization</h1>
+                <p>Register a new book loan protocol for yourself or a student.</p>
+            </div>
+            <div class="user-profile" id="header-profile" style="display: flex; align-items: center; gap: 15px;"></div>
+        </header>
+
+        <section class="glass" style="max-width: 700px; margin: 0 auto; padding: 60px;">
+            <div class="sidebar-brand" style="justify-content: center; font-size: 2.5rem; margin-bottom: 40px; border-bottom: 1px solid var(--glass-border); padding-bottom: 30px;">
+                <i class="fas fa-file-signature"></i>
+                <span>NexProtocol</span>
+            </div>
+            
+            <form id="issue-form">
+                <div class="form-group" id="student-group" style="display: none;">
+                    <label>Select Recipient (Student)</label>
+                    <div class="search-wrapper" style="max-width: 100%;">
+                        <i class="fas fa-users-viewfinder"></i>
+                        <select id="issue-student" class="form-control" required style="padding-left: 50px;">
+                            <option value="">Querying database...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Asset (Book Title)</label>
+                    <div class="search-wrapper" style="max-width: 100%;">
+                        <i class="fas fa-book-bookmark"></i>
+                        <select id="issue-book" class="form-control" required style="padding-left: 50px;">
+                            <option value="">Analyzing catalog...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(139, 92, 246, 0.05); padding: 30px; border-radius: 20px; border: 1px solid rgba(139, 92, 246, 0.15); margin-top: 30px;">
+                    <h4 style="color: var(--primary); margin-bottom: 15px; font-weight: 700;"><i class="fas fa-shield-halved"></i> Institutional Loan Policy</h4>
+                    <ul style="list-style: none; color: var(--text-muted); font-size: 0.9rem; line-height: 1.8;">
+                        <li><i class="fas fa-check" style="color:var(--accent);"></i> Standard loan duration: <strong>7 Days</strong></li>
+                        <li><i class="fas fa-check" style="color:var(--accent);"></i> Overdue fine rate: <strong>₹10 Per Day</strong></li>
+                        <li><i class="fas fa-check" style="color:var(--accent);"></i> Asset must be returned in original condition.</li>
+                    </ul>
+                </div>
+
+                <div style="display: flex; gap: 20px; margin-top: 50px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 2; padding: 18px;">Authorize & Sign <i class="fas fa-signature"></i></button>
+                    <button type="button" class="btn btn-glass" onclick="window.history.back()" style="flex: 1; padding: 18px;">Discard</button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <div id="toast-container"></div>
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const role = checkAuth();
+            if (role === 'admin') {
+                document.getElementById('student-group').style.display = 'block';
+                const users = await fetchApi('/users');
+                const studentSelect = document.getElementById('issue-student');
+                if (users) {
+                    studentSelect.innerHTML = '<option value="">Search student record...</option>' + 
+                        users.filter(u => u.role === 'student').map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
+                }
+            }
+            
+            const books = await fetchApi('/books/available');
+            const bookSelect = document.getElementById('issue-book');
+            if (books) {
+                bookSelect.innerHTML = '<option value="">Find available asset...</option>' + 
+                    books.map(b => `<option value="${b.id}">${b.title} [${b.quantity} In Stock]</option>`).join('');
+            }
+        });
+
+        document.getElementById('issue-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const bookId = parseInt(document.getElementById('issue-book').value);
+            const studentId = document.getElementById('issue-student') ? parseInt(document.getElementById('issue-student').value) : null;
+            
+            const res = await fetchApi('/issue', 'POST', { book_id: bookId, user_id: studentId });
+            if (res) {
+                showToast('Protocol Activated. Asset Loan Signed.', 'success');
+                setTimeout(() => window.location.href = (sessionStorage.getItem('role') === 'admin' ? 'admin_dashboard.html' : 'student_dashboard.html'), 1500);
+            }
+        });
+    </script>
+</body>
+</html>

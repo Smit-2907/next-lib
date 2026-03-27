@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexLib | Command Center</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="app-layout">
+    <nav class="sidebar glass" id="sidebar-container"></nav>
+    <main class="content">
+        <header class="page-header">
+            <div class="page-title">
+                <h1>Command Center</h1>
+                <p>Monitoring global library traffic and real-time analytics.</p>
+            </div>
+            <div class="user-profile" id="header-profile" style="display: flex; align-items: center; gap: 15px;"></div>
+        </header>
+
+        <section class="stats-container" id="stats-grid">
+            <div class="stat-card glass loading-pulse" style="height: 120px;"></div>
+            <div class="stat-card glass loading-pulse" style="height: 120px;"></div>
+            <div class="stat-card glass loading-pulse" style="height: 120px;"></div>
+            <div class="stat-card glass loading-pulse" style="height: 120px;"></div>
+        </section>
+
+        <!-- New Analytics Grid -->
+        <section style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 40px;">
+            <div class="glass table-card" style="padding: 30px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <h3>Loan Distribution</h3>
+                    <div class="badge badge-success">System Nominal</div>
+                </div>
+                <div style="height: 300px;">
+                    <canvas id="loanChart"></canvas>
+                </div>
+            </div>
+            <div class="glass table-card" style="padding: 30px;">
+                <h3>Status Monitor</h3>
+                <div class="mt-4">
+                    <p style="font-size: 0.9rem; margin-bottom: 8px;">Database Latency</p>
+                    <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 99px; overflow: hidden;">
+                        <div style="background: var(--accent); width: 12%; height: 100%;"></div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Avg: 12ms</p>
+                </div>
+                <div class="mt-4">
+                    <p style="font-size: 0.9rem; margin-bottom: 8px;">Storage Volume</p>
+                    <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 99px; overflow: hidden;">
+                        <div style="background: var(--primary); width: 68%; height: 100%;"></div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">68% Capacity (3.2GB Free)</p>
+                </div>
+                <div style="margin-top: 40px; padding: 20px; background: rgba(139, 92, 246, 0.05); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.1);">
+                    <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-muted);">
+                        <i class="fas fa-info-circle" style="color: var(--primary);"></i> Automatic database optimization scheduled for 02:00 UTC.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass table-card">
+            <div class="table-header">
+                <h3>Live Activity Feed</h3>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="window.location.href='issue.html'" class="btn btn-glass" style="padding: 8px 15px;"><i class="fas fa-filter"></i></button>
+                    <button onclick="window.location.href='issue.html'" class="btn btn-primary" style="padding: 8px 15px;"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Student</th><th>Book</th><th>Issue Date</th><th>Due Date</th><th>Status</th></tr></thead>
+                    <tbody id="activity-list"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <div id="toast-container"></div>
+    <script src="app.js"></script>
+    <script>
+        checkAuth('admin');
+        // Initializer for Chart
+        function initAdminChart(data) {
+            const ctx = document.getElementById('loanChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Books Issued',
+                        data: [12, 19, 3, 5, 2, 3, 7],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false },
+                        x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
