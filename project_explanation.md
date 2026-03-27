@@ -11,7 +11,7 @@ The project is divided into two main parts:
 
 ## 2. Directory Structure
 ```
-Amit/
+next-lib/
 ├── README.md               # Main project documentation
 ├── seed_data.py            # Script used to initialize the database with data
 ├── library.db              # Database file (also found inside backend/ for consistency)
