@@ -36,28 +36,13 @@
                     <canvas id="loanChart"></canvas>
                 </div>
             </div>
-            <div class="glass table-card" style="padding: 30px;">
-                <h3>Status Monitor</h3>
-                <div class="mt-4">
-                    <p style="font-size: 0.9rem; margin-bottom: 8px;">Database Latency</p>
-                    <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 99px; overflow: hidden;">
-                        <div style="background: var(--accent); width: 12%; height: 100%;"></div>
-                    </div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Avg: 12ms</p>
-                </div>
-                <div class="mt-4">
-                    <p style="font-size: 0.9rem; margin-bottom: 8px;">Storage Volume</p>
-                    <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 99px; overflow: hidden;">
-                        <div style="background: var(--primary); width: 68%; height: 100%;"></div>
-                    </div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">68% Capacity (3.2GB Free)</p>
-                </div>
-                <div style="margin-top: 40px; padding: 20px; background: rgba(139, 92, 246, 0.05); border-radius: 12px; border: 1px solid rgba(139, 92, 246, 0.1);">
-                    <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-muted);">
-                        <i class="fas fa-info-circle" style="color: var(--primary);"></i> Automatic database optimization scheduled for 02:00 UTC.
-                    </p>
+            <div id="category-stats">
+                <div class="glass table-card" style="padding: 30px; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                    <div class="loading-pulse" style="width:60px; height:60px; border-radius:50%; background:rgba(255,255,255,0.05);"></div>
+                    <p style="margin-top:20px; color:var(--text-muted);">Syncing Genre Data...</p>
                 </div>
             </div>
+
         </section>
 
         <section class="glass table-card">

@@ -7,8 +7,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 import os
-from .database import get_db
-from .models import User
+from database import get_db
+from models import User
 
 # Configuration (Use environment variables for production)
 SECRET_KEY = os.getenv("SECRET_KEY", "your-very-secure-library-secret-key-12345")

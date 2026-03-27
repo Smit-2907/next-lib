@@ -51,7 +51,7 @@
             };
             
             try {
-                const res = await fetch('http://127.0.0.1:8011/register', {
+                const res = await fetch('http://127.0.0.1:8000/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -61,11 +61,12 @@
                 if (res.ok) {
                     showToast('Account created! Logging you in...', 'success');
                     // Automatically log in
-                    const loginRes = await fetch('http://127.0.0.1:8011/login', {
+                    const loginRes = await fetch('http://127.0.0.1:8000/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email: payload.email, password: payload.password })
                     });
+
                     const loginData = await loginRes.json();
                     if (loginRes.ok) {
                         sessionStorage.setItem('token', loginData.access_token);
