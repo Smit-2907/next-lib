@@ -33,7 +33,7 @@ class IssuedBook(Base):
     issue_date = Column(Date, nullable=False, default=date.today)
     due_date = Column(Date, nullable=False)
     return_date = Column(Date, nullable=True)
-    status = Column(String(20), nullable=False, default="issued") # 'issued' or 'returned'
+    status = Column(String(20), nullable=False, default="issued") # 'pending', 'issued', or 'returned'
     fine = Column(Float, default=0.0)
     
     user = relationship("User", back_populates="issued_books")
