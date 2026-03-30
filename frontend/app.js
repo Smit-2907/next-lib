@@ -118,13 +118,16 @@ async function loadDashboard() {
             if (typeof initAdminChart === 'function') initAdminChart(stats);
         }
         const issues = await fetchApi('/issued');
-        if (issues) renderActivityTable(issues.slice(0, 5));
+        if (issues) {
+            // Show all recent activity (pending and recent actions)
+            // The backend already sorts pending to top
+            renderActivityTable(issues.slice(0, 10)); 
+            updatePendingBadge(issues);
+        }
         
-        // --- NEW OPERATION: CATEGORY SYNC ---
         const catStats = await fetchApi('/reports/categories');
         if (catStats) renderCategoryAnalytics(catStats);
     } else {
-
         const history = await fetchApi('/my-issues');
         if (history) renderStudentPortal(history);
     }
@@ -147,37 +150,86 @@ function renderAdminDash(stats) {
     `).join('');
 }
 
-function renderActivityTable(issues) {
+function updatePendingBadge(issues) {
+    const pendingCount = issues.filter(i => i.status === 'pending').length;
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        if (link.innerHTML.includes('Monitor')) {
+            const existingBadge = link.querySelector('.pending-badge');
+            if (existingBadge) existingBadge.remove();
+            if (pendingCount > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'pending-badge';
+                badge.innerHTML = pendingCount;
+                badge.style.cssText = `
+                    background: var(--danger);
+                    color: white;
+                    border-radius: 50%;
+                    padding: 2px 6px;
+                    font-size: 0.6rem;
+                    position: absolute;
+                    top: 10px;
+                    right: 15px;
+                    font-weight: 700;
+                    box-shadow: 0 0 10px var(--danger);
+                    animation: pulse 2s infinite;
+                `;
+                link.style.position = 'relative';
+                link.appendChild(badge);
+            }
+        }
+    });
+}
+
+function renderActivityTable(issues, title = 'Live Activity Feed') {
     const list = document.getElementById('activity-list');
+    const titleEl = document.querySelector('.table-header h3');
+    if (titleEl) titleEl.innerText = title;
+    
     if (!list) return;
+    
+    // Ensure "Actions" header exists
     const tableHeader = list.closest('table').querySelector('thead tr');
     if (tableHeader && !tableHeader.innerHTML.includes('Actions')) {
         tableHeader.innerHTML += '<th>Actions</th>';
+    }
+    
+    if (issues.length === 0) {
+        list.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 40px; color: var(--text-muted);">
+            <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 10px; display: block; color: var(--accent);"></i>
+            All requests handled. System is clear.
+        </td></tr>`;
+        return;
     }
 
     list.innerHTML = issues.map(i => {
         const isPending = i.status === 'pending';
         const isOverdue = i.status === 'issued' && new Date(i.due_date) < new Date();
         const statusClass = isPending ? 'badge-info' : (isOverdue ? 'badge-danger' : (i.status === 'issued' ? 'badge-warning' : 'badge-success'));
+        const pulseEffect = isPending ? 'animation: shadowPulse 2s infinite;' : '';
         
         return `
-            <tr>
+            <tr style="${pulseEffect}">
                 <td style="font-weight:600">${i.student_name}</td>
                 <td><strong>${i.book_title}</strong></td>
                 <td>${i.issue_date}</td>
                 <td><span style="color:${isOverdue ? 'var(--danger)' : 'inherit'}">${i.due_date}</span></td>
                 <td><span class="badge ${statusClass}">${i.status.toUpperCase()}</span></td>
-                <td>
+                <td id="action-cell-${i.id}">
                     ${isPending ? `
                         <div style="display:flex; gap:8px;">
                             <button onclick="handleIssueAction(${i.id}, 'approve')" class="btn btn-primary" style="padding: 5px 10px; font-size: 0.7rem;"><i class="fas fa-check"></i></button>
                             <button onclick="handleIssueAction(${i.id}, 'reject')" class="btn btn-glass" style="padding: 5px 10px; font-size: 0.7rem; color:var(--danger); border-color:var(--danger);"><i class="fas fa-times"></i></button>
                         </div>
-                    ` : '<span style="color:var(--text-muted); font-size:0.8rem;">---</span>'}
+                    ` : `
+                        <span style="color:var(--accent); font-weight:700; font-size:0.8rem; letter-spacing:1px;">
+                            <i class="fas fa-check-double" style="margin-right:5px;"></i> ${i.status === 'issued' ? 'APPROVED' : i.status.toUpperCase()}
+                        </span>
+                    `}
                 </td>
             </tr>
         `;
-    }).join('') || '<tr><td colspan="6" class="text-center">No recent activity</td></tr>';
+    }).join('');
 }
 
 async function handleIssueAction(id, action) {
