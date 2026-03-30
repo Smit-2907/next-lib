@@ -12,8 +12,8 @@
     <main class="content">
         <header class="page-header">
             <div class="page-title">
-                <h1>Loan Authorization</h1>
-                <p>Register a new book loan protocol for yourself or a student.</p>
+                <h1 id="page_heading">Loan Authorization</h1>
+                <p id="page_subtext">Register a new book loan protocol for yourself or a student.</p>
             </div>
             <div class="user-profile" id="header-profile" style="display: flex; align-items: center; gap: 15px;"></div>
         </header>
@@ -66,7 +66,7 @@
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const role = checkAuth();
+            const role = checkAuth(); // verified: any auth role allowed
             if (role === 'admin') {
                 document.getElementById('student-group').style.display = 'block';
                 const users = await fetchApi('/users');
@@ -75,6 +75,9 @@
                     studentSelect.innerHTML = '<option value="">Search student record...</option>' + 
                         users.filter(u => u.role === 'student').map(u => `<option value="${u.id}">${u.name} (${u.email})</option>`).join('');
                 }
+            } else {
+                document.getElementById('page_heading').innerText = 'Request Asset';
+                document.getElementById('page_subtext').innerText = 'Select an available book to add to your reading collection.';
             }
             
             const books = await fetchApi('/books/available');
@@ -88,12 +91,15 @@
         document.getElementById('issue-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const bookId = parseInt(document.getElementById('issue-book').value);
-            const studentId = document.getElementById('issue-student') ? parseInt(document.getElementById('issue-student').value) : null;
+            const role = sessionStorage.getItem('role');
+            
+            // If admin, use dropdown; if student, send null so backend infers current user
+            const studentId = role === 'admin' ? parseInt(document.getElementById('issue-student').value) : null;
             
             const res = await fetchApi('/issue', 'POST', { book_id: bookId, user_id: studentId });
             if (res) {
                 showToast('Protocol Activated. Asset Loan Signed.', 'success');
-                setTimeout(() => window.location.href = (sessionStorage.getItem('role') === 'admin' ? 'admin_dashboard.html' : 'student_dashboard.html'), 1500);
+                setTimeout(() => window.location.href = (role === 'admin' ? 'admin_dashboard.html' : 'student_dashboard.html'), 1500);
             }
         });
     </script>

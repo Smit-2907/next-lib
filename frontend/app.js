@@ -20,12 +20,20 @@ function showToast(message, type = 'success') {
 function checkAuth(roleRequired = null) {
     const token = sessionStorage.getItem('token');
     const role = sessionStorage.getItem('role');
+    const path = window.location.pathname.toLowerCase();
+    
     if (!token) {
-        if (!['login.html', 'register.html', 'index.html'].some(p => window.location.pathname.includes(p))) {
+        // If no token, only allow landing, login and register
+        const permitted = ['login.html', 'register.html', 'index.html'];
+        const isPermitted = permitted.some(p => path.endsWith(p)) || path === '/' || path.endsWith('/');
+        
+        if (!isPermitted) {
             window.location.href = 'login.html';
         }
         return null;
     }
+    
+    // If a specific role is required and user doesn't have it, redirect to OWN dashboard
     if (roleRequired && role !== roleRequired) {
         window.location.href = role === 'admin' ? 'admin_dashboard.html' : 'student_dashboard.html';
     }
@@ -142,38 +150,74 @@ function renderAdminDash(stats) {
 function renderActivityTable(issues) {
     const list = document.getElementById('activity-list');
     if (!list) return;
-    list.innerHTML = issues.map(i => `
-        <tr>
-            <td style="font-weight:600">${i.student_name}</td>
-            <td><strong>${i.book_title}</strong></td>
-            <td>${i.issue_date}</td>
-            <td><span style="color:${new Date(i.due_date) < new Date() ? 'var(--danger)' : 'inherit'}">${i.due_date}</span></td>
-            <td><span class="badge ${i.status === 'issued' ? 'badge-warning' : 'badge-success'}">${i.status}</span></td>
-        </tr>
-    `).join('') || '<tr><td colspan="5" class="text-center">No recent activity</td></tr>';
+    const tableHeader = list.closest('table').querySelector('thead tr');
+    if (tableHeader && !tableHeader.innerHTML.includes('Actions')) {
+        tableHeader.innerHTML += '<th>Actions</th>';
+    }
+
+    list.innerHTML = issues.map(i => {
+        const isPending = i.status === 'pending';
+        const isOverdue = i.status === 'issued' && new Date(i.due_date) < new Date();
+        const statusClass = isPending ? 'badge-info' : (isOverdue ? 'badge-danger' : (i.status === 'issued' ? 'badge-warning' : 'badge-success'));
+        
+        return `
+            <tr>
+                <td style="font-weight:600">${i.student_name}</td>
+                <td><strong>${i.book_title}</strong></td>
+                <td>${i.issue_date}</td>
+                <td><span style="color:${isOverdue ? 'var(--danger)' : 'inherit'}">${i.due_date}</span></td>
+                <td><span class="badge ${statusClass}">${i.status.toUpperCase()}</span></td>
+                <td>
+                    ${isPending ? `
+                        <div style="display:flex; gap:8px;">
+                            <button onclick="handleIssueAction(${i.id}, 'approve')" class="btn btn-primary" style="padding: 5px 10px; font-size: 0.7rem;"><i class="fas fa-check"></i></button>
+                            <button onclick="handleIssueAction(${i.id}, 'reject')" class="btn btn-glass" style="padding: 5px 10px; font-size: 0.7rem; color:var(--danger); border-color:var(--danger);"><i class="fas fa-times"></i></button>
+                        </div>
+                    ` : '<span style="color:var(--text-muted); font-size:0.8rem;">---</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('') || '<tr><td colspan="6" class="text-center">No recent activity</td></tr>';
+}
+
+async function handleIssueAction(id, action) {
+    const res = await fetchApi(`/issue/${action}/${id}`, 'POST');
+    if (res) {
+        showToast(`Request ${action}ed successfully`, 'success');
+        loadDashboard();
+    }
 }
 
 function renderStudentPortal(history) {
-    const overdue = history.filter(h => h.status === 'issued' && new Date(h.due_date) < new Date()).length;
+    const pending = history.filter(h => h.status === 'pending').length;
     const active = history.filter(h => h.status === 'issued').length;
+    const overdue = history.filter(h => h.status === 'issued' && new Date(h.due_date) < new Date()).length;
+    
     const summary = document.getElementById('student-summary');
     if (summary) {
         summary.innerHTML = `
+            <div class="stat-card glass"><div class="stat-icon" style="color:var(--warning)"><i class="fas fa-clock"></i></div><div class="stat-info"><span class="label">Pending Requests</span><span class="value">${pending}</span></div></div>
             <div class="stat-card glass"><div class="stat-icon" style="color:var(--secondary)"><i class="fas fa-book-reader"></i></div><div class="stat-info"><span class="label">Currently Reading</span><span class="value">${active}</span></div></div>
             <div class="stat-card glass" style="border-color:${overdue? 'var(--danger)':'var(--accent)'}"><div class="stat-icon" style="color:var(--danger)"><i class="fas fa-exclamation-circle"></i></div><div class="stat-info"><span class="label">Overdue Items</span><span class="value">${overdue}</span></div></div>
         `;
     }
     const list = document.getElementById('history-list');
     if (list) {
-        list.innerHTML = history.map(i => `
-            <tr>
-                <td style="font-weight:700">${i.book_title}</td>
-                <td>${i.issue_date}</td>
-                <td><span style="color:${new Date(i.due_date) < new Date() && i.status==='issued' ? 'var(--danger)' : 'inherit'}">${i.due_date}</span></td>
-                <td><span class="badge ${i.status === 'issued' ? 'badge-warning' : 'badge-success'}">${i.status}</span></td>
-                <td>₹${i.fine}</td>
-            </tr>
-        `).join('') || '<tr><td colspan="5" class="text-center">Your library account is fresh.</td></tr>';
+        list.innerHTML = history.map(i => {
+            const isPending = i.status === 'pending';
+            const isOverdue = i.status === 'issued' && new Date(i.due_date) < new Date();
+            const statusClass = isPending ? 'badge-info' : (isOverdue ? 'badge-danger' : (i.status === 'issued' ? 'badge-warning' : 'badge-success'));
+            
+            return `
+                <tr>
+                    <td style="font-weight:700">${i.book_title}</td>
+                    <td>${i.issue_date}</td>
+                    <td><span style="color:${isOverdue ? 'var(--danger)' : 'inherit'}">${i.due_date}</span></td>
+                    <td><span class="badge ${statusClass}">${i.status.toUpperCase()}</span></td>
+                    <td>${isPending ? 'Waiting for Admin...' : `₹${i.fine}`}</td>
+                </tr>
+            `;
+        }).join('') || '<tr><td colspan="5" class="text-center">Your library account is fresh.</td></tr>';
     }
 }
 
@@ -238,7 +282,6 @@ async function loadCatalog(search = '') {
         // Grid View (Standard for Students, Optional for Admin)
         const isAdmin = role === 'admin';
         container.innerHTML = `
-            ${!isAdmin ? `<div class="page-header"><h3>Digital Archive</h3><div class="search-wrapper"><i class="fas fa-search"></i><input type="text" class="form-control" placeholder="Search archive..." oninput="debounce(this.value)"></div></div>` : ''}
             <div class="books-grid">${books.map(b => `
                 <div class="book-card glass" style="position:relative;">
                     ${isAdmin ? `<div style="position:absolute; top:15px; right:15px; display:flex; gap:8px; z-index:10;">
@@ -272,15 +315,27 @@ async function reqIssue(id) {
 
 // --- BOOTSTRAP ---
 document.addEventListener('DOMContentLoaded', () => {
-    const page = window.location.pathname.split('/').pop();
+    let page = window.location.pathname.split('/').pop().toLowerCase() || 'index.html';
     const role = checkAuth();
+    
+    // Core pages that shared between roles
+    const sharedPages = ['books.html', 'issue.html', 'return.html'];
+    const isShared = sharedPages.some(p => page === p);
+    
     if (role && !['index.html', 'login.html', 'register.html'].some(p => page.includes(p))) {
-        injectLayout(page || 'index.html');
+        injectLayout(page);
     }
+    
     if (page.includes('dashboard')) loadDashboard();
-    if (page.includes('books')) loadCatalog();
+    
+    // Ensure catalog and issue functionality works
+    if (page === 'books.html') loadCatalog();
+    if (page === 'issue.html' && role !== 'admin') {
+        // Extra check for student issue page specific logic if needed
+    }
 });
 
 window.logout = logout;
 window.debounce = debounce;
 window.reqIssue = reqIssue;
+window.handleIssueAction = handleIssueAction;

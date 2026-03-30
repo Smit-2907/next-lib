@@ -154,18 +154,45 @@ async def issue_book(req: IssueRequest, current_user: User = Depends(get_current
     issue_date = date.today()
     due_date = issue_date + timedelta(days=7)
     
+    new_status = "issued" if current_user.role == "admin" else "pending"
+    
     new_issue = IssuedBook(
         book_id=req.book_id,
         user_id=user_id,
         issue_date=issue_date,
         due_date=due_date,
-        status="issued"
+        status=new_status
     )
     
-    book.quantity -= 1
+    if new_status == "issued":
+        book.quantity -= 1
+        
     db.add(new_issue)
     await db.commit()
-    return {"message": "Book issued successfully", "due_date": due_date.isoformat()}
+    return {"message": f"Book {new_status} successfully", "status": new_status, "due_date": due_date.isoformat()}
+
+@app.post("/issue/approve/{issue_id}", dependencies=[Depends(get_current_admin)])
+async def approve_issue(issue_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(IssuedBook).options(selectinload(IssuedBook.book)).filter(IssuedBook.id == issue_id, IssuedBook.status == "pending")
+    )
+    issue = result.scalars().first()
+    if not issue:
+        raise HTTPException(status_code=404, detail="Pending request not found")
+        
+    if issue.book.quantity <= 0:
+        raise HTTPException(status_code=400, detail="Asset no longer available for approval")
+        
+    issue.status = "issued"
+    issue.book.quantity -= 1
+    await db.commit()
+    return {"message": "Issue protocol approved and finalized"}
+
+@app.post("/issue/reject/{issue_id}", dependencies=[Depends(get_current_admin)])
+async def reject_issue(issue_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(IssuedBook).where(IssuedBook.id == issue_id, IssuedBook.status == "pending"))
+    await db.commit()
+    return {"message": "Issue protocol rejected and purged"}
 
 @app.post("/return")
 async def return_book(req: ReturnRequest, db: AsyncSession = Depends(get_db)):

@@ -18,13 +18,13 @@
         </header>
 
         <!-- Management Controls -->
-        <section class="glass" style="padding: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+        <section class="glass" id="mgmt-controls" style="padding: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 20px; align-items: center;">
                 <div class="search-wrapper">
                     <i class="fas fa-search"></i>
                     <input type="text" class="form-control" placeholder="Search archive..." oninput="debounce(this.value)">
                 </div>
-                <div style="display: flex; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 10px;">
+                <div id="view-switcher" style="display: flex; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 10px;">
                     <button id="view-table" class="btn btn-glass active-view" style="padding: 10px 15px; border: none; background: var(--primary);" onclick="switchView('table')">
                         <i class="fas fa-list"></i>
                     </button>
@@ -33,9 +33,9 @@
                     </button>
                 </div>
             </div>
-            <div style="display: flex; gap: 15px;">
+            <div id="admin-actions" style="display: flex; gap: 15px;">
                 <button class="btn btn-glass"><i class="fas fa-file-export"></i> Export CSV</button>
-                <button onclick="openBookModal()" class="btn btn-primary"><i class="fas fa-plus"></i> Add New Entry</button>
+                <button id="add-book-btn" onclick="openBookModal()" class="btn btn-primary"><i class="fas fa-plus"></i> Add New Entry</button>
             </div>
         </section>
 
@@ -75,17 +75,33 @@
     <div id="toast-container"></div>
     <script src="app.js"></script>
     <script>
-        checkAuth('admin');
-        let currentView = 'table';
+        const userRole = checkAuth();
+        let currentView = userRole === 'admin' ? 'table' : 'grid';
+        
+        // UI Adjustments for Student
+        if (userRole !== 'admin') {
+            document.querySelector('.page-title h1').innerText = 'Digital Archive';
+            document.querySelector('.page-title p').innerText = 'Explore and issue your next favorite book.';
+            
+            // Hide admin elements
+            const adminActions = document.getElementById('admin-actions');
+            if (adminActions) adminActions.style.display = 'none';
+            
+            const viewSwitcher = document.getElementById('view-switcher');
+            if (viewSwitcher) viewSwitcher.style.display = 'none';
+        }
 
         function switchView(view) {
             currentView = view;
-            document.getElementById('view-table').style.background = view === 'table' ? 'var(--primary)' : 'transparent';
-            document.getElementById('view-grid').style.background = view === 'grid' ? 'var(--primary)' : 'transparent';
+            if (userRole === 'admin') {
+                document.getElementById('view-table').style.background = view === 'table' ? 'var(--primary)' : 'transparent';
+                document.getElementById('view-grid').style.background = view === 'grid' ? 'var(--primary)' : 'transparent';
+            }
             loadCatalog();
         }
 
         function openBookModal(book = null) {
+            if (userRole !== 'admin') return;
             const modal = document.getElementById('book-modal');
             document.getElementById('modal-title').innerText = book ? 'Modify Archive Entry' : 'New Archive Entry';
             document.getElementById('book-id').value = book ? book.id : '';
