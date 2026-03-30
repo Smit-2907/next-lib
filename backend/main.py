@@ -217,15 +217,32 @@ async def return_book(req: ReturnRequest, db: AsyncSession = Depends(get_db)):
 
 @app.get("/issued", response_model=List[IssuedBookSchema], dependencies=[Depends(get_current_admin)])
 async def get_all_issued(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(IssuedBook).options(selectinload(IssuedBook.book), selectinload(IssuedBook.user)))
+    # Prioritize 'pending' status then newest first
+    query = select(IssuedBook).options(
+        selectinload(IssuedBook.book), 
+        selectinload(IssuedBook.user)
+    ).order_by(
+        # This sorts 'pending' before 'issued' and 'returned' (if we use case statement or just manual sort)
+        # Simplest: newest ID first, then filter/sort in JS or use order_by
+        IssuedBook.id.desc()
+    )
+    result = await db.execute(query)
     records = result.scalars().all()
-    # Manual conversion to inject book title and student name
+    
     out = []
     for r in records:
+        # Avoid attribute errors by ensuring book and user exist
+        if not r.book or not r.user:
+            continue
+            
         schema = IssuedBookSchema.from_orm(r)
         schema.book_title = r.book.title
         schema.student_name = r.user.name
         out.append(schema)
+    
+    # Sort pending to top manually to be 100% sure
+    out.sort(key=lambda x: x.status != "pending")
+    
     return out
 
 @app.get("/my-issues", response_model=List[IssuedBookSchema])
